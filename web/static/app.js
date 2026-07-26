@@ -8,12 +8,13 @@ function fmtMem(gb) {
 function renderNodes(nodes) {
   const root = $("node-list");
   if (!nodes.length) {
-    root.innerHTML = `<p class="empty">No providers online yet. On another Mac Mini or laptop run:<br><code>dico join --coordinator ${location.origin}</code></p>`;
+    root.innerHTML = `<p class="empty">No providers online yet. On another Mac Mini or laptop run:<br><code>dico join --coordinator ${location.origin} --transport websocket</code></p>`;
     return;
   }
   root.innerHTML = nodes
     .map((n, i) => {
       const caps = n.capabilities || {};
+      const cap = n.capacity || {};
       const accel = [
         caps.has_metal ? "Metal" : null,
         caps.has_cuda ? "CUDA" : null,
@@ -22,14 +23,19 @@ function renderNodes(nodes) {
         .filter(Boolean)
         .join(" · ");
       const role = n.role === "coordinator" ? "coordinator" : "provider";
+      const transport = n.transport || "http";
+      const slots =
+        cap.max_slots != null
+          ? `${cap.free_slots ?? "?"}/${cap.max_slots} slots`
+          : "slots n/a";
       return `
         <article class="node" style="animation-delay:${i * 40}ms">
           <div class="node-id">
             ${n.node_id}
             <small>${caps.hostname || "host"} · ${caps.platform || "unknown"} · ${accel}</small>
           </div>
-          <div class="badge ${role}">${role} · load ${(n.load ?? 0).toFixed(2)}</div>
-          <div class="meta">${caps.cpu_cores || "?"} cores · model v${n.model_version ?? 0}</div>
+          <div class="badge ${role}">${role} · ${transport} · load ${(n.load ?? 0).toFixed(2)}</div>
+          <div class="meta">${caps.cpu_cores || "?"} cores · ${slots} · model v${n.model_version ?? 0}</div>
         </article>
       `;
     })
@@ -45,9 +51,12 @@ async function refresh() {
     $("m-version").textContent = `v${data.model_version ?? 0}`;
     $("m-cores").textContent = String(data.total_cpu_cores ?? 0);
     $("m-mem").textContent = fmtMem(data.total_memory_gb);
+    const wsEl = $("m-ws");
+    if (wsEl) wsEl.textContent = String(data.ws_providers ?? 0);
     renderNodes(data.nodes || []);
     $("pulse").classList.add("live");
-    $("pulse-label").textContent = "mesh live";
+    $("pulse-label").textContent = data.auth_required ? "mesh live · auth" : "mesh live";
+
   } catch (err) {
     $("pulse").classList.remove("live");
     $("pulse-label").textContent = "unreachable";
@@ -74,7 +83,9 @@ async function trainRound() {
     showOut({
       model_version: data.model_version,
       num_contributors: data.num_contributors,
+      checksum_sha256: data.checksum_sha256,
     });
+
     await refresh();
   } catch (err) {
     showOut({ error: String(err) });
@@ -98,8 +109,10 @@ async function sampleInfer() {
       prediction: data.prediction,
       probabilities: data.probabilities,
       strategy: data.strategy,
+      cost_micro_usd: data.cost_micro_usd,
       contributors: (data.contributors || []).map((c) => c.node_id),
     });
+
   } catch (err) {
     showOut({ error: String(err) });
   } finally {

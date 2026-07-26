@@ -1,11 +1,14 @@
-"""Shared wire protocol for the DICO mesh."""
+"""Shared wire protocol for the DICO mesh (HTTP + WebSocket)."""
 
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
+
+
+PROTOCOL_VERSION = 1
 
 
 class NodeRole(str, Enum):
@@ -21,6 +24,18 @@ class NodeCapabilities(BaseModel):
     platform: str = "unknown"
     hostname: str = "unknown"
     max_concurrent_tasks: int = 2
+    software_version: str = "0.2.0"
+
+
+class BackendCapacity(BaseModel):
+    """Live capacity advertised on heartbeats (Darkbloom-style)."""
+
+    max_slots: int = 2
+    free_slots: int = 2
+    queued: int = 0
+    warm_models: list[str] = Field(default_factory=lambda: ["collective-mlp"])
+    memory_pressure: float = 0.0  # 0..1
+    cpu_util: float = 0.0  # 0..1
 
 
 class NodeInfo(BaseModel):
@@ -33,6 +48,12 @@ class NodeInfo(BaseModel):
     model_version: int = 0
     load: float = 0.0
     last_heartbeat: float = 0.0
+    transport: Literal["http", "websocket"] = "http"
+    trust_level: Literal["none", "self_signed", "hardware"] = "none"
+    capacity: BackendCapacity = Field(default_factory=BackendCapacity)
+    consecutive_errors: int = 0
+    cooldown_until: float = 0.0
+    protocol_version: int = PROTOCOL_VERSION
 
     @property
     def endpoint(self) -> str:
@@ -44,10 +65,14 @@ class Heartbeat(BaseModel):
     load: float = 0.0
     model_version: int = 0
     status: str = "online"
+    capacity: BackendCapacity | None = None
+    protocol_version: int = PROTOCOL_VERSION
 
 
 class RegisterRequest(BaseModel):
     node: NodeInfo
+    protocol_version: int = PROTOCOL_VERSION
+    auth_token: str | None = None
 
 
 class InferenceRequest(BaseModel):
@@ -55,6 +80,8 @@ class InferenceRequest(BaseModel):
     request_id: str | None = None
     ensemble: bool = True
     timeout_s: float = 10.0
+    model: str = "collective-mlp"
+    routing: Literal["ensemble", "cheapest", "local"] = "ensemble"
 
 
 class InferenceResult(BaseModel):
@@ -73,6 +100,8 @@ class CollectiveInferenceResponse(BaseModel):
     model_version: int
     contributors: list[InferenceResult]
     strategy: str = "weighted_average"
+    cost_micro_usd: int = 0
+    provider_ids: list[str] = Field(default_factory=list)
 
 
 class TrainLocalRequest(BaseModel):
@@ -88,6 +117,7 @@ class WeightUpdate(BaseModel):
     num_samples: int
     weights: dict[str, list[Any]]
     loss: float = 0.0
+    checksum_sha256: str | None = None
 
 
 class AggregateRequest(BaseModel):
@@ -98,6 +128,7 @@ class AggregateResponse(BaseModel):
     model_version: int
     num_contributors: int
     weights: dict[str, list[Any]]
+    checksum_sha256: str | None = None
 
 
 class ClusterStatus(BaseModel):
@@ -107,6 +138,10 @@ class ClusterStatus(BaseModel):
     total_cpu_cores: int = 0
     total_memory_gb: float = 0.0
     online_providers: int = 0
+    protocol_version: int = PROTOCOL_VERSION
+    auth_required: bool = False
+    billing_enabled: bool = True
+    ws_providers: int = 0
 
 
 class TaskRecord(BaseModel):
@@ -115,3 +150,27 @@ class TaskRecord(BaseModel):
     status: str
     created_at: float
     detail: dict[str, Any] = Field(default_factory=dict)
+
+
+# --- WebSocket provider protocol (mirrored types) ---
+
+WsMessageType = Literal[
+    "register",
+    "heartbeat",
+    "inference_request",
+    "inference_complete",
+    "inference_error",
+    "train_request",
+    "train_complete",
+    "model_sync",
+    "cancel",
+    "ack",
+    "error",
+]
+
+
+class WsEnvelope(BaseModel):
+    type: WsMessageType
+    protocol_version: int = PROTOCOL_VERSION
+    request_id: str | None = None
+    payload: dict[str, Any] = Field(default_factory=dict)
