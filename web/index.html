@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DICO Mesh</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="atmosphere" aria-hidden="true"></div>
+    <main class="shell">
+      <header class="top">
+        <div class="brand-block">
+          <p class="brand">DICO</p>
+          <p class="tag">distributed compute mesh</p>
+        </div>
+        <div class="pulse" id="pulse">
+          <span class="dot"></span>
+          <span id="pulse-label">connecting</span>
+        </div>
+      </header>
+
+      <section class="hero-metrics" aria-label="Cluster summary">
+        <div class="metric">
+          <span class="label">providers</span>
+          <strong id="m-providers">—</strong>
+        </div>
+        <div class="metric">
+          <span class="label">model</span>
+          <strong id="m-version">v—</strong>
+        </div>
+        <div class="metric">
+          <span class="label">cpu cores</span>
+          <strong id="m-cores">—</strong>
+        </div>
+        <div class="metric">
+          <span class="label">memory</span>
+          <strong id="m-mem">—</strong>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h1>Infrastructure</h1>
+          <p>Mac Minis and laptops currently joined as providers.</p>
+        </div>
+        <div class="node-list" id="node-list"></div>
+      </section>
+
+      <section class="panel actions">
+        <div class="panel-head">
+          <h2>Collective intelligence</h2>
+          <p>Train across the mesh, then query the ensemble.</p>
+        </div>
+        <div class="action-row">
+          <button type="button" id="btn-train">Run training round</button>
+          <button type="button" id="btn-infer" class="ghost">Sample inference</button>
+          <pre id="action-out" class="out" hidden></pre>
+        </div>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
