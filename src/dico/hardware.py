@@ -45,6 +45,8 @@ def detect_cuda() -> bool:
 
 
 def probe_capabilities(max_concurrent_tasks: int = 2) -> NodeCapabilities:
+    from dico import __version__
+
     mem = psutil.virtual_memory()
     return NodeCapabilities(
         cpu_cores=psutil.cpu_count(logical=True) or 1,
@@ -54,6 +56,7 @@ def probe_capabilities(max_concurrent_tasks: int = 2) -> NodeCapabilities:
         platform=f"{platform.system()}-{platform.machine()}",
         hostname=socket.gethostname(),
         max_concurrent_tasks=max_concurrent_tasks,
+        software_version=__version__,
     )
 
 
