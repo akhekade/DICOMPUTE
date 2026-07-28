@@ -1,4 +1,4 @@
-# DICO — Distributed Compute Mesh
+# DICO — Distributed Compute Mesh powered by XDC Network
 
 Production-oriented distributed computing infrastructure for **Mac Minis and laptops**. Machines join as providers, participate in federated training, and serve **collective AI inference** through a Darkbloom-inspired control plane.
 
